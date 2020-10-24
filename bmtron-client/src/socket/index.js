@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import socketIOClient from 'socket.io-client';
 
-const socket = socketIOClient('http://127.0.0.1:4001');
+const socket = socketIOClient(process.env.SOCKET_URI);
 
 const useSocketGameState = () => {
   const [response, setResponse] = useState({});

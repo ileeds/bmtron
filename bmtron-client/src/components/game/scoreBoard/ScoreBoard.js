@@ -1,6 +1,5 @@
 import React from 'react';
 import styled from 'styled-components';
-import capitalize from 'lodash/capitalize';
 import map from 'lodash/map';
 import { useSocketGameState } from '../../../socket';
 
