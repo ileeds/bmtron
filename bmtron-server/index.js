@@ -17,15 +17,15 @@ const DOWN = 'd';
 const LEFT = 'l';
 const RIGHT = 'r';
 
-const RED = 'red';
-const YELLOW = 'yellow';
-const PURPLE = 'purple';
-const GREEN = 'green';
+const ONE = 'red';
+const TWO = 'black';
+const THREE = 'purple';
+const FOUR = 'green';
 
 const activeColors = {};
 
 const initialPlayerState = {
-  [RED]: {
+  [ONE]: {
     position: {
       x: 15,
       y: 15,
@@ -33,7 +33,7 @@ const initialPlayerState = {
     direction: RIGHT,
     alive: true,
   },
-  [YELLOW]: {
+  [TWO]: {
     position: {
       x: 15,
       y: 35,
@@ -41,7 +41,7 @@ const initialPlayerState = {
     direction: RIGHT,
     alive: true,
   },
-  [PURPLE]: {
+  [THREE]: {
     position: {
       x: 35,
       y: 15,
@@ -49,7 +49,7 @@ const initialPlayerState = {
     direction: RIGHT,
     alive: true,
   },
-  [GREEN]: {
+  [FOUR]: {
     position: {
       x: 35,
       y: 35,
@@ -65,6 +65,15 @@ const startPositions = _.map(initialPlayerState, (val, key) => {
 
 let playerState = { ...initialPlayerState };
 
+const initialScores = {
+  [ONE]: 0,
+  [TWO]: 0,
+  [THREE]: 0,
+  [FOUR]: 0,
+};
+
+let scores = { ...initialScores };
+
 const initialBoard = _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
   if (startPositions[`${x}:${y}`]) {
     return startPositions[`${x}:${y}`];
@@ -78,34 +87,34 @@ let gameInit;
 
 const resetActiveColors = () => {
   const activeConnections = Object.keys(io.sockets.sockets);
-  if (!activeConnections.includes(activeColors[RED])) {
-    delete activeColors[RED];
+  if (!activeConnections.includes(activeColors[ONE])) {
+    delete activeColors[ONE];
   }
-  if (!activeConnections.includes(activeColors[YELLOW])) {
-    delete activeColors[YELLOW];
+  if (!activeConnections.includes(activeColors[TWO])) {
+    delete activeColors[TWO];
   }
-  if (!activeConnections.includes(activeColors[PURPLE])) {
-    delete activeColors[PURPLE];
+  if (!activeConnections.includes(activeColors[THREE])) {
+    delete activeColors[THREE];
   }
-  if (!activeConnections.includes(activeColors[GREEN])) {
-    delete activeColors[GREEN];
+  if (!activeConnections.includes(activeColors[FOUR])) {
+    delete activeColors[FOUR];
   }
 };
 
 io.on('connection', (socket) => {
   resetActiveColors();
-  if (!(RED in activeColors)) {
-    activeColors[RED] = socket.id;
-    io.to(socket.id).emit('PlayerColor', RED);
-  } else if (!(YELLOW in activeColors)) {
-    activeColors[YELLOW] = socket.id;
-    io.to(socket.id).emit('PlayerColor', YELLOW);
-  } else if (!(PURPLE in activeColors)) {
-    activeColors[PURPLE] = socket.id;
-    io.to(socket.id).emit('PlayerColor', PURPLE);
-  } else if (!(GREEN in activeColors)) {
-    activeColors[GREEN] = socket.id;
-    io.to(socket.id).emit('PlayerColor', GREEN);
+  if (!(ONE in activeColors)) {
+    activeColors[ONE] = socket.id;
+    io.to(socket.id).emit('PlayerColor', ONE);
+  } else if (!(TWO in activeColors)) {
+    activeColors[TWO] = socket.id;
+    io.to(socket.id).emit('PlayerColor', TWO);
+  } else if (!(THREE in activeColors)) {
+    activeColors[THREE] = socket.id;
+    io.to(socket.id).emit('PlayerColor', THREE);
+  } else if (!(FOUR in activeColors)) {
+    activeColors[FOUR] = socket.id;
+    io.to(socket.id).emit('PlayerColor', FOUR);
   } else {
     return;
   }
@@ -166,12 +175,13 @@ const handleKeyDown = ({ key, color }) => {
 };
 
 const getNewPlayerState = (board, player) => {
-  const { position, direction, alive } = player;
+  const { position, direction, alive, ...rest } = player;
   if (!alive) {
     return {
       position,
       direction,
       alive,
+      ...rest,
     };
   }
 
@@ -213,14 +223,15 @@ const getNewPlayerState = (board, player) => {
     position: newAlive ? newPosition : position,
     direction,
     alive: newAlive,
+    ...rest,
   };
 };
 
 const getBoard = () => {
-  const redPosition = playerState[RED].position;
-  const yellowPosition = playerState[YELLOW].position;
-  const purplePosition = playerState[PURPLE].position;
-  const greenPosition = playerState[GREEN].position;
+  const onePosition = playerState[ONE].position;
+  const twoPosition = playerState[TWO].position;
+  const threePosition = playerState[THREE].position;
+  const fourPosition = playerState[FOUR].position;
   return _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
     if (board[x][y]) {
       const color = board[x][y];
@@ -231,17 +242,17 @@ const getBoard = () => {
       }
     }
     
-    if (RED in activeColors && redPosition.x === x && redPosition.y === y) {
-      return RED;
+    if (ONE in activeColors && onePosition.x === x && onePosition.y === y) {
+      return ONE;
     }
-    if (YELLOW in activeColors && yellowPosition.x === x && yellowPosition.y === y) {
-      return YELLOW;
+    if (TWO in activeColors && twoPosition.x === x && twoPosition.y === y) {
+      return TWO;
     }
-    if (PURPLE in activeColors && purplePosition.x === x && purplePosition.y === y) {
-      return PURPLE;
+    if (THREE in activeColors && threePosition.x === x && threePosition.y === y) {
+      return THREE;
     }
-    if (GREEN in activeColors && greenPosition.x === x && greenPosition.y === y) {
-      return GREEN;
+    if (FOUR in activeColors && fourPosition.x === x && fourPosition.y === y) {
+      return FOUR;
     }
 
     return null;
@@ -249,23 +260,25 @@ const getBoard = () => {
 };
 
 const getAlivePlayer = () => {
-  if (playerState[RED].alive) {
-    return RED;
-  } else if (playerState[YELLOW].alive) {
-    return YELLOW;
-  } else if (playerState[PURPLE].alive) {
-    return PURPLE;
-  } else if (playerState[GREEN].alive) {
-    return GREEN;
+  if (playerState[ONE].alive) {
+    return ONE;
+  } else if (playerState[TWO].alive) {
+    return TWO;
+  } else if (playerState[THREE].alive) {
+    return THREE;
+  } else if (playerState[FOUR].alive) {
+    return FOUR;
+  } else {
+    return 'DRAW';
   }
 };
 
 const getGameStatus = () => {
   const gameIsActive = [
-    playerState[RED].alive,
-    playerState[YELLOW].alive,
-    playerState[PURPLE].alive,
-    playerState[GREEN].alive
+    playerState[ONE].alive,
+    playerState[TWO].alive,
+    playerState[THREE].alive,
+    playerState[FOUR].alive
   ].filter(Boolean).length > 1;
   const winner = gameIsActive
     ? null
@@ -273,8 +286,20 @@ const getGameStatus = () => {
   return { gameIsActive, winner };
 };
 
+const getActiveScores = () => {
+  return _.pickBy(scores, (_value, key) => {
+    return key in activeColors;
+  });
+}
+
 const getApiAndEmit = socket => {
   const { gameIsActive, winner } = getGameStatus();
+  if (winner && winner !== 'DRAW' && gameInit) {
+    scores = {
+      ...scores,
+      [winner]: scores[winner] + 1,
+    };
+  }
   if (!gameIsActive) {
     gameInit = null;
   }
@@ -283,17 +308,17 @@ const getApiAndEmit = socket => {
     : null;
   if (seconds !== null && seconds <= 0) {
     playerState = { ...playerState,
-      [RED]: {
-        ...getNewPlayerState(board, playerState[RED]),
+      [ONE]: {
+        ...getNewPlayerState(board, playerState[ONE]),
       },
-      [YELLOW]: {
-        ...getNewPlayerState(board, playerState[YELLOW]),
+      [TWO]: {
+        ...getNewPlayerState(board, playerState[TWO]),
       },
-      [PURPLE]: {
-        ...getNewPlayerState(board, playerState[PURPLE]),
+      [THREE]: {
+        ...getNewPlayerState(board, playerState[THREE]),
       },
-      [GREEN]: {
-        ...getNewPlayerState(board, playerState[GREEN]),
+      [FOUR]: {
+        ...getNewPlayerState(board, playerState[FOUR]),
       },
     };
   }
@@ -304,6 +329,7 @@ const getApiAndEmit = socket => {
     activeColors,
     gameIsActive,
     winner,
+    scores: getActiveScores(),
   });
 };
 

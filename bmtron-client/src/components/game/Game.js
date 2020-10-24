@@ -2,8 +2,9 @@ import React from 'react';
 import styled from 'styled-components';
 
 import GameMessage from './gameMessage';
-import Grid from '../grid';
 import GameTrigger from './gameTrigger';
+import Grid from '../grid';
+import ScoreBoard from './scoreBoard';
 
 const Container = styled.div`
   display: flex;
@@ -15,6 +16,7 @@ const Container = styled.div`
 const Game = () => {
   return (
     <Container>
+      <ScoreBoard />
       <GameMessage />
       <Grid />
       <GameTrigger />

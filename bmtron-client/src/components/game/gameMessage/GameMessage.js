@@ -14,12 +14,14 @@ const Container = styled.div`
 const GameMessage = () => {
   const color = useSocketPlayerColor();
   const { countdown, winner } = useSocketGameState();
-  let message;
-  if (winner) {
-    message = `${capitalize(winner)} wins!`
+  let message = '';
+  if (winner === 'DRAW') {
+    message = 'Draw';
+  } else if (winner) {
+    message = `${capitalize(winner)} wins!`;
   } else if (countdown) {
     message = countdown;
-  } else {
+  } else if (color) {
     message = `You are ${color}`;
   }
   return (
