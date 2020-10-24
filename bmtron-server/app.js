@@ -4,7 +4,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const _ = require('lodash');
 
-const port = 4001;
+const port = process.env.PORT || 4001;
 const app = express();
 
 app.use(express.static(path.join(__dirname, 'build')));
