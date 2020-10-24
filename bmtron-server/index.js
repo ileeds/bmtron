@@ -24,40 +24,42 @@ const FOUR = 'green';
 
 const activeColors = {};
 
+const sharedPlayerState = {
+  direction: RIGHT,
+  alive: true,
+};
+
 const initialPlayerState = {
   [ONE]: {
     position: {
       x: 15,
       y: 15,
     },
-    direction: RIGHT,
-    alive: true,
+    ...sharedPlayerState,
   },
   [TWO]: {
     position: {
       x: 15,
       y: 35,
     },
-    direction: RIGHT,
-    alive: true,
+    ...sharedPlayerState,
   },
   [THREE]: {
     position: {
       x: 35,
       y: 15,
     },
-    direction: RIGHT,
-    alive: true,
+    ...sharedPlayerState,
   },
   [FOUR]: {
     position: {
       x: 35,
       y: 35,
     },
-    direction: RIGHT,
-    alive: true,
+    ...sharedPlayerState,
   },
 };
+const COLORS = Object.keys(initialPlayerState);
 
 const startPositions = _.map(initialPlayerState, (val, key) => {
   return { [`${val.position.x}:${val.position.y}`]: key };
@@ -65,12 +67,10 @@ const startPositions = _.map(initialPlayerState, (val, key) => {
 
 let playerState = { ...initialPlayerState };
 
-const initialScores = {
-  [ONE]: 0,
-  [TWO]: 0,
-  [THREE]: 0,
-  [FOUR]: 0,
-};
+const initialScores = _.reduce(initialPlayerState, (acc, _val, key) => {
+  acc[key] = 0;
+  return acc;
+}, {});
 
 let scores = { ...initialScores };
 
@@ -87,38 +87,28 @@ let gameInit;
 
 const resetActiveColors = () => {
   const activeConnections = Object.keys(io.sockets.sockets);
-  if (!activeConnections.includes(activeColors[ONE])) {
-    delete activeColors[ONE];
-  }
-  if (!activeConnections.includes(activeColors[TWO])) {
-    delete activeColors[TWO];
-  }
-  if (!activeConnections.includes(activeColors[THREE])) {
-    delete activeColors[THREE];
-  }
-  if (!activeConnections.includes(activeColors[FOUR])) {
-    delete activeColors[FOUR];
-  }
+  _.forEach(COLORS, color => {
+    if (!activeConnections.includes(activeColors[color])) {
+      delete activeColors[color];
+    }
+  });
 };
 
 io.on('connection', (socket) => {
   resetActiveColors();
-  if (!(ONE in activeColors)) {
-    activeColors[ONE] = socket.id;
-    io.to(socket.id).emit('PlayerColor', ONE);
-  } else if (!(TWO in activeColors)) {
-    activeColors[TWO] = socket.id;
-    io.to(socket.id).emit('PlayerColor', TWO);
-  } else if (!(THREE in activeColors)) {
-    activeColors[THREE] = socket.id;
-    io.to(socket.id).emit('PlayerColor', THREE);
-  } else if (!(FOUR in activeColors)) {
-    activeColors[FOUR] = socket.id;
-    io.to(socket.id).emit('PlayerColor', FOUR);
-  } else {
+  let colorObtained = false;
+  _.forEach(COLORS, color => {
+    if (!(color in activeColors)) {
+      colorObtained = true;
+      activeColors[color] = socket.id;
+      io.to(socket.id).emit('PlayerColor', color);
+      return false;
+    }
+  });
+  if (!colorObtained) {
     return;
   }
-  setInterval(() => getApiAndEmit(socket), 100);
+  setInterval(() => getApiAndEmit(socket), 125);
   socket.on('disconnect', () => {
     resetActiveColors();
   });
@@ -228,58 +218,38 @@ const getNewPlayerState = (board, player) => {
 };
 
 const getBoard = () => {
-  const onePosition = playerState[ONE].position;
-  const twoPosition = playerState[TWO].position;
-  const threePosition = playerState[THREE].position;
-  const fourPosition = playerState[FOUR].position;
+  const colorPositions = _.reduce(COLORS, (acc, color) => {
+    acc[color] = playerState[color].position;
+    return acc;
+  }, {});
   return _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
     if (board[x][y]) {
       const color = board[x][y];
       if (color in activeColors) {
-        return board[x][y]
+        return board[x][y];
       } else {
         return null;
       }
     }
     
-    if (ONE in activeColors && onePosition.x === x && onePosition.y === y) {
-      return ONE;
-    }
-    if (TWO in activeColors && twoPosition.x === x && twoPosition.y === y) {
-      return TWO;
-    }
-    if (THREE in activeColors && threePosition.x === x && threePosition.y === y) {
-      return THREE;
-    }
-    if (FOUR in activeColors && fourPosition.x === x && fourPosition.y === y) {
-      return FOUR;
-    }
-
-    return null;
+    return _.find(COLORS, color => {
+      return color in activeColors && colorPositions[color].x === x && colorPositions[color].y === y;
+    });
   })));
 };
 
 const getAlivePlayer = () => {
-  if (playerState[ONE].alive) {
-    return ONE;
-  } else if (playerState[TWO].alive) {
-    return TWO;
-  } else if (playerState[THREE].alive) {
-    return THREE;
-  } else if (playerState[FOUR].alive) {
-    return FOUR;
-  } else {
-    return 'DRAW';
+  const alivePlayer = _.find(COLORS, color => {
+    return playerState[color].alive;
+  });
+  if (alivePlayer) {
+    return alivePlayer;
   }
+  return 'DRAW';
 };
 
 const getGameStatus = () => {
-  const gameIsActive = [
-    playerState[ONE].alive,
-    playerState[TWO].alive,
-    playerState[THREE].alive,
-    playerState[FOUR].alive
-  ].filter(Boolean).length > 1;
+  const gameIsActive = [..._.map(COLORS, color => playerState[color].alive)].filter(Boolean).length > 1;
   const winner = gameIsActive
     ? null
     : getAlivePlayer();
@@ -308,18 +278,10 @@ const getApiAndEmit = socket => {
     : null;
   if (seconds !== null && seconds <= 0) {
     playerState = { ...playerState,
-      [ONE]: {
-        ...getNewPlayerState(board, playerState[ONE]),
-      },
-      [TWO]: {
-        ...getNewPlayerState(board, playerState[TWO]),
-      },
-      [THREE]: {
-        ...getNewPlayerState(board, playerState[THREE]),
-      },
-      [FOUR]: {
-        ...getNewPlayerState(board, playerState[FOUR]),
-      },
+      ..._.reduce(COLORS, (acc, color) => {
+        acc[color] = getNewPlayerState(board, playerState[color]);
+        return acc;
+      }, {}),
     };
   }
   board = getBoard();
