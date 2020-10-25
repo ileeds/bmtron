@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path')
 const http = require('http');
 const socketIo = require('socket.io');
 const _ = require('lodash');
@@ -9,7 +10,7 @@ const app = express();
 app.use(express.static('build'));
 
 app.get('/*', (_req, res) => {
-  res.sendFile('index.html');
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 const server = http.createServer(app);
