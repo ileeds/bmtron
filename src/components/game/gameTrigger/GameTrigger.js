@@ -35,7 +35,7 @@ const GameTrigger = () => {
           Start
         </Button>
       )}
-      {didSomeoneWin && (
+      {didSomeoneWin && color && (
         <Button onClick={emitEndGame}>
           Reset
         </Button>
