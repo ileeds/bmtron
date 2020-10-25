@@ -35,7 +35,11 @@ const useSocketPlayerColor = () => {
 
 const emitStartGame = () => {
   socket.emit('StartGame');
-}
+};
+
+const emitEndGame = () => {
+  socket.emit('EndGame');
+};
 
 const emitKeyDown = (key, color) => {
   socket.emit('KeyDown', { key, color });
@@ -45,5 +49,6 @@ export {
   useSocketGameState,
   useSocketPlayerColor,
   emitStartGame,
+  emitEndGame,
   emitKeyDown,
 };

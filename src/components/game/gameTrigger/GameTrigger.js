@@ -1,10 +1,18 @@
 import React from 'react';
 import styled from 'styled-components';
+import find from 'lodash/find';
 import size from 'lodash/size';
-import { emitStartGame, useSocketGameState } from '../../../socket';
+import { emitStartGame, emitEndGame, useSocketGameState, useSocketPlayerColor } from '../../../socket';
 
 const Container = styled.div`
+  margin-left: 35%;
+  margin-right: 35%;
+  display: flex;
+  justify-content: space-around;
   width: 100%;
+`;
+
+const Button = styled.button`
   text-align: center;
   margin-top: 16px;
   margin-bottom: 16px;
@@ -12,13 +20,27 @@ const Container = styled.div`
 `;
 
 const GameTrigger = () => {
-  const { countdown, activeColors } = useSocketGameState();
+  const color = useSocketPlayerColor();
+  const { activeColors, countdown, scores } = useSocketGameState();
+  const didSomeoneWin = find(scores, (val, _key) => {
+    console.log(val);
+    return val > 0;
+  });
   if (size(activeColors) < 2) {
     return null;
   }
   return (
-    <Container onClick={emitStartGame}>
-      {countdown === null && 'Click me to start'}
+    <Container>
+      {countdown === null && color && (
+        <Button onClick={emitStartGame}>
+          Start
+        </Button>
+      )}
+      {didSomeoneWin && (
+        <Button onClick={emitEndGame}>
+          Reset
+        </Button>
+      )}
     </Container>
   );
 }

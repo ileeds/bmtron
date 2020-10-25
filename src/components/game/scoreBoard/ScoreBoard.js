@@ -1,7 +1,21 @@
 import React from 'react';
-import styled from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import map from 'lodash/map';
-import { useSocketGameState } from '../../../socket';
+import { useSocketGameState, useSocketPlayerColor } from '../../../socket';
+
+const pulseAnimation = keyframes`
+  0% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.7);
+	}
+	70% {
+		transform: scale(1);
+		box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+	}
+	100% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+	}`;
 
 const Container = styled.div`
   width: 100%;
@@ -11,7 +25,7 @@ const Container = styled.div`
   font-size: 3vw;
 `;
 
-const Row = styled.div`
+const Item = styled.div`
   background-color: ${({ color }) => color };
   color: white;
   width: 4vw;
@@ -20,17 +34,19 @@ const Row = styled.div`
   padding-right: 0.5vw;
   margin-right: 0.5vw;
   display: inline;
+  animation: ${({ isMyColor }) => isMyColor ? css`${pulseAnimation} 2s infinite` : ''};
 `;
 
-const GameMessage = () => {
+const ScoreBoard = () => {
   const { scores } = useSocketGameState();
+  const color = useSocketPlayerColor();
   return (
     <Container>
       {map(scores, (val, key) => {
-        return <Row color={key}>{val}</Row>;
+        return <Item color={key} isMyColor={color === key}>{val}</Item>;
       })}
     </Container>
   );
 }
 
-export default GameMessage;
+export default ScoreBoard;

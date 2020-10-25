@@ -154,6 +154,7 @@ io.on('connection', (socket) => {
     resetActiveColors();
   });
   socket.on('StartGame', handleStartGame);
+  socket.on('EndGame', handleEndGame);
   socket.on('KeyDown', handleKeyDown);
 });
 
@@ -163,9 +164,14 @@ const handleStartGame = () => {
   }
   playerState = { ...initialPlayerState };
   board = [...initialBoard];
-
   gameInit = new Date();
-}
+};
+
+const handleEndGame = () => {
+  playerState = { ...initialPlayerState };
+  board = [...initialBoard];
+  scores = { ...initialScores };
+};
 
 const handleKeyDown = ({ key, color }) => {
   switch(key) {
