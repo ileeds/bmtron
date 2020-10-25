@@ -68,9 +68,14 @@ const initialPlayerState = {
 };
 const COLORS = Object.keys(initialPlayerState);
 
-const startPositions = _.map(initialPlayerState, (val, key) => {
-  return { [`${val.position.x}:${val.position.y}`]: key };
-});
+const getPositionKey = (x, y) => {
+  return `${x}:${y}`;
+}
+
+const startPositions = _.reduce(initialPlayerState, (acc, val, key) => {
+  acc[getPositionKey(val.position.x, val.position.y)] = key;
+  return acc;
+}, {});
 
 let playerState = { ...initialPlayerState };
 
@@ -82,13 +87,16 @@ const initialScores = _.reduce(initialPlayerState, (acc, _val, key) => {
 let scores = { ...initialScores };
 
 const initialBoard = _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
-  if (startPositions[`${x}:${y}`]) {
-    return startPositions[`${x}:${y}`];
+  const positionKey = getPositionKey(x, y);
+  if (startPositions[positionKey]) {
+    return startPositions[positionKey];
   }
   return null;
 })));
 
 let board = [...initialBoard];
+
+let newPositions = {};
 
 let gameInit;
 
@@ -109,12 +117,22 @@ const getGameStateAndEmit = () => {
   if (seconds !== null && seconds <= 0) {
     playerState = { ...playerState,
       ..._.reduce(COLORS, (acc, color) => {
-        acc[color] = getNewPlayerState(board, playerState[color]);
+        acc[color] = getNewPlayerState(board, playerState[color], color);
         return acc;
       }, {}),
     };
+
+    _.forEach(newPositions, (val, _key) => {
+      if (val.length > 1) {
+        _.forEach(val, (color) => {
+          playerState[color].alive = false;
+        });
+      }
+    });
+
+    newPositions = {};
   }
-  board = getBoard();
+  board = getBoard(gameIsActive);
   io.emit('GameState', {
     board,
     countdown: seconds >= 0 ? seconds : 0,
@@ -211,7 +229,7 @@ const handleKeyDown = ({ key, color }) => {
   }
 };
 
-const getNewPlayerState = (board, player) => {
+const getNewPlayerState = (board, player, color) => {
   const { position, direction, alive, ...rest } = player;
   if (!alive) {
     return {
@@ -252,9 +270,14 @@ const getNewPlayerState = (board, player) => {
     }
   })(direction);
 
+  const newPositionKey = getPositionKey(newPosition.x, newPosition.y);
+  newPositions[newPositionKey] = newPositions[newPositionKey]
+    ? [...newPositions[newPositionKey], color]
+    : [color];
+
   const newAlive = newPosition.x < COLUMN_COUNT && newPosition.y < ROW_COUNT
     && newPosition.x >= 0 && newPosition.y >= 0
-    && !board[newPosition.x][newPosition.y]; // TODO
+    && !board[newPosition.x][newPosition.y]; // TODO, and names, choose color, collision, and remove
 
   return {
     position: newAlive ? newPosition : position,
@@ -264,24 +287,29 @@ const getNewPlayerState = (board, player) => {
   };
 };
 
-const getBoard = () => {
+const getBoard = (gameIsActive) => {
   const colorPositions = _.reduce(COLORS, (acc, color) => {
     acc[color] = playerState[color].position;
     return acc;
   }, {});
   return _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
+    const newColor = _.find(COLORS, color => {
+      return color in activeColors && colorPositions[color].x === x && colorPositions[color].y === y;
+    });
+
     if (board[x][y]) {
+      if (gameIsActive && newColor && !startPositions[getPositionKey(x, y)]) {
+        return 'grey';
+      }
       const color = board[x][y];
-      if (color in activeColors) {
-        return board[x][y];
+      if (color in activeColors || color === 'grey') {
+        return color;
       } else {
         return null;
       }
     }
-    
-    return _.find(COLORS, color => {
-      return color in activeColors && colorPositions[color].x === x && colorPositions[color].y === y;
-    });
+
+    return newColor;
   })));
 };
 

@@ -13,8 +13,10 @@ const Grid = () => {
   const color = useSocketPlayerColor();
 
   const handleKeydown = (e) => {
-    const { key, repeat } = e;
-    e.preventDefault();
+    const { key, metaKey, repeat } = e;
+    if (!metaKey) {
+      e.preventDefault();
+    }
     if (repeat) {
       return;
     }
