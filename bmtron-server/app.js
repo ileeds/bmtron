@@ -92,6 +92,8 @@ let board = [...initialBoard];
 
 let gameInit;
 
+let gameStateInterval;
+
 const resetActiveColors = () => {
   const activeConnections = Object.keys(io.sockets.sockets);
   _.forEach(COLORS, color => {
@@ -115,7 +117,7 @@ io.on('connection', (socket) => {
   if (!colorObtained) {
     return;
   }
-  setInterval(() => getApiAndEmit(socket), 125);
+  gameStateInterval = setInterval(() => getGameStateAndEmit(socket), 125);
   socket.on('disconnect', () => {
     resetActiveColors();
   });
@@ -214,7 +216,7 @@ const getNewPlayerState = (board, player) => {
 
   const newAlive = newPosition.x < COLUMN_COUNT && newPosition.y < ROW_COUNT
     && newPosition.x >= 0 && newPosition.y >= 0
-    && !board[newPosition.x][newPosition.y];
+    && !board[newPosition.x][newPosition.y]; // TODO
 
   return {
     position: newAlive ? newPosition : position,
@@ -269,7 +271,7 @@ const getActiveScores = () => {
   });
 }
 
-const getApiAndEmit = socket => {
+const getGameStateAndEmit = socket => {
   const { gameIsActive, winner } = getGameStatus();
   if (winner && winner !== 'DRAW' && gameInit) {
     scores = {
@@ -300,6 +302,7 @@ const getApiAndEmit = socket => {
     winner,
     scores: getActiveScores(),
   });
+  clearInterval(gameStateInterval);
 };
 
 server.listen(port, () => console.log(`Listening on port ${port}`));
