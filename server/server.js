@@ -24,10 +24,13 @@ const DOWN = 'd';
 const LEFT = 'l';
 const RIGHT = 'r';
 
-const ONE = 'red';
-const TWO = 'black';
-const THREE = 'purple';
-const FOUR = 'green';
+const ALL_COLORS = ['red', 'black', 'purple', 'green', 'pink'];
+const colorMap = {
+  1: 'red',
+  2: 'black',
+  3: 'purple',
+  4: 'green'
+};
 
 const activeColors = {};
 
@@ -36,65 +39,66 @@ const sharedPlayerState = {
   alive: true,
 };
 
-const initialPlayerState = {
-  [ONE]: {
+const getInitialPlayerState = () => ({
+  [colorMap[1]]: {
     position: {
       x: 15,
       y: 15,
     },
     ...sharedPlayerState,
   },
-  [TWO]: {
+  [colorMap[2]]: {
     position: {
       x: 15,
       y: 35,
     },
     ...sharedPlayerState,
   },
-  [THREE]: {
+  [colorMap[3]]: {
     position: {
       x: 35,
       y: 15,
     },
     ...sharedPlayerState,
   },
-  [FOUR]: {
+  [colorMap[4]]: {
     position: {
       x: 35,
       y: 35,
     },
     ...sharedPlayerState,
   },
-};
-const COLORS = Object.keys(initialPlayerState);
+});
+const getPossibleColors = () => [colorMap[1], colorMap[2], colorMap[3], colorMap[4]];
 
 const getPositionKey = (x, y) => {
   return `${x}:${y}`;
 }
 
-const startPositions = _.reduce(initialPlayerState, (acc, val, key) => {
+const getStartPositions = () => _.reduce(getInitialPlayerState(), (acc, val, key) => {
   acc[getPositionKey(val.position.x, val.position.y)] = key;
   return acc;
 }, {});
 
-let playerState = { ...initialPlayerState };
+let playerState = { ...getInitialPlayerState() };
 
-const initialScores = _.reduce(initialPlayerState, (acc, _val, key) => {
+const initialScores = _.reduce(getInitialPlayerState(), (acc, _val, key) => {
   acc[key] = 0;
   return acc;
 }, {});
 
 let scores = { ...initialScores };
 
-const initialBoard = _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
+const getInitialBoard = () => _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
   const positionKey = getPositionKey(x, y);
+  const startPositions = getStartPositions();
   if (startPositions[positionKey]) {
     return startPositions[positionKey];
   }
   return null;
 })));
 
-let board = [...initialBoard];
+let board = getInitialBoard();
 
 let newPositions = {};
 
@@ -116,7 +120,7 @@ const getGameStateAndEmit = () => {
     : null;
   if (seconds !== null && seconds <= 0) {
     playerState = { ...playerState,
-      ..._.reduce(COLORS, (acc, color) => {
+      ..._.reduce(Object.values(activeColors), (acc, color) => {
         acc[color] = getNewPlayerState(board, playerState[color], color);
         return acc;
       }, {}),
@@ -147,9 +151,11 @@ setInterval(getGameStateAndEmit, 50);
 
 const resetActiveColors = () => {
   const activeConnections = Object.keys(io.sockets.sockets);
-  _.forEach(COLORS, color => {
-    if (!activeConnections.includes(activeColors[color])) {
-      delete activeColors[color];
+  _.forEach(Object.keys(activeColors), connection => {
+    if (!activeConnections.includes(connection)) {
+      const oldColor = activeColors[connection];
+      delete activeColors[connection];
+      playerState[oldColor] = { ...getInitialPlayerState()[oldColor] };
     }
   });
 };
@@ -157,10 +163,11 @@ const resetActiveColors = () => {
 io.on('connection', (socket) => {
   resetActiveColors();
   let colorObtained = false;
-  _.forEach(COLORS, color => {
-    if (!(color in activeColors)) {
+  const selectedColors = Object.values(activeColors);
+  _.forEach(getPossibleColors(), color => {
+    if (!selectedColors.includes(color)) {
       colorObtained = true;
-      activeColors[color] = socket.id;
+      activeColors[socket.id] = color;
       io.to(socket.id).emit('PlayerColor', color);
       return false;
     }
@@ -168,26 +175,53 @@ io.on('connection', (socket) => {
   if (!colorObtained) {
     return;
   }
+  emitAvailableColors();
   socket.on('disconnect', () => {
     resetActiveColors();
+    emitAvailableColors();
   });
   socket.on('StartGame', handleStartGame);
   socket.on('EndGame', handleEndGame);
   socket.on('KeyDown', handleKeyDown);
+  socket.on('SelectColor', (color) => handleSelectColor(socket, color));
+  socket.on('GetAvailableColors', emitAvailableColors);
 });
+
+const emitAvailableColors = () => {
+  io.emit('AvailableColors', _.xor(Object.values(activeColors), ALL_COLORS));
+};
+
+const handleSelectColor = (socket, color) => {
+  const oldColor = activeColors[socket.id];
+  if (color === oldColor) {
+    return;
+  }
+  const oldKey = _.findKey(colorMap, (val, _key) => {
+    return val === oldColor;
+  });
+  colorMap[oldKey] = color;
+  activeColors[socket.id] = color;
+  const oldPlayerState = playerState[oldColor];
+  playerState[color] = oldPlayerState;
+  delete playerState[oldColor];
+  const oldScore = scores[oldColor];
+  scores[color] = oldScore;
+  delete scores[oldColor];
+  io.to(socket.id).emit('PlayerColor', color);
+};
 
 const handleStartGame = () => {
   if (!_.size(activeColors) >= 2) {
     return;
   }
-  playerState = { ...initialPlayerState };
-  board = [...initialBoard];
+  playerState = { ...getInitialPlayerState() };
+  board = getInitialBoard();
   gameInit = new Date();
 };
 
 const handleEndGame = () => {
-  playerState = { ...initialPlayerState };
-  board = [...initialBoard];
+  playerState = { ...getInitialPlayerState() };
+  board = getInitialBoard();
   scores = { ...initialScores };
 };
 
@@ -270,14 +304,16 @@ const getNewPlayerState = (board, player, color) => {
     }
   })(direction);
 
-  const newPositionKey = getPositionKey(newPosition.x, newPosition.y);
-  newPositions[newPositionKey] = newPositions[newPositionKey]
-    ? [...newPositions[newPositionKey], color]
-    : [color];
-
+  if (Object.values(activeColors).includes(color)) {
+    const newPositionKey = getPositionKey(newPosition.x, newPosition.y);
+    newPositions[newPositionKey] = newPositions[newPositionKey]
+      ? [...newPositions[newPositionKey], color]
+      : [color];
+  }
+  
   const newAlive = newPosition.x < COLUMN_COUNT && newPosition.y < ROW_COUNT
     && newPosition.x >= 0 && newPosition.y >= 0
-    && !board[newPosition.x][newPosition.y]; // TODO, and names, choose color, collision, and remove
+    && !board[newPosition.x][newPosition.y];
 
   return {
     position: newAlive ? newPosition : position,
@@ -288,13 +324,15 @@ const getNewPlayerState = (board, player, color) => {
 };
 
 const getBoard = (gameIsActive) => {
-  const colorPositions = _.reduce(COLORS, (acc, color) => {
+  const selectedColors = Object.values(activeColors);
+  const colorPositions = _.reduce(selectedColors, (acc, color) => {
     acc[color] = playerState[color].position;
     return acc;
   }, {});
+  const startPositions = getStartPositions();
   return _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
-    const newColor = _.find(COLORS, color => {
-      return color in activeColors && colorPositions[color].x === x && colorPositions[color].y === y;
+    const newColor = _.find(selectedColors, color => {
+      return colorPositions[color].x === x && colorPositions[color].y === y;
     });
 
     if (board[x][y]) {
@@ -302,7 +340,7 @@ const getBoard = (gameIsActive) => {
         return 'grey';
       }
       const color = board[x][y];
-      if (color in activeColors || color === 'grey') {
+      if (selectedColors.includes(color) || color === 'grey') {
         return color;
       } else {
         return null;
@@ -314,7 +352,7 @@ const getBoard = (gameIsActive) => {
 };
 
 const getAlivePlayer = () => {
-  const alivePlayer = _.find(COLORS, color => {
+  const alivePlayer = _.find(Object.values(activeColors), color => {
     return playerState[color].alive;
   });
   if (alivePlayer) {
@@ -324,7 +362,7 @@ const getAlivePlayer = () => {
 };
 
 const getGameStatus = () => {
-  const gameIsActive = [..._.map(COLORS, color => playerState[color].alive)].filter(Boolean).length > 1;
+  const gameIsActive = [..._.map(Object.values(activeColors), color => playerState[color].alive)].filter(Boolean).length > 1;
   const winner = gameIsActive
     ? null
     : getAlivePlayer();
@@ -332,8 +370,9 @@ const getGameStatus = () => {
 };
 
 const getActiveScores = () => {
+  const selectedColors = Object.values(activeColors);
   return _.pickBy(scores, (_value, key) => {
-    return key in activeColors;
+    return selectedColors.includes(key);
   });
 };
 

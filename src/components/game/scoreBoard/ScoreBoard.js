@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import map from 'lodash/map';
-import { useSocketGameState, useSocketPlayerColor } from '../../../socket';
+import {
+  useSocketGameState,
+  useSocketPlayerColor,
+} from '../../../socket';
+import ColorPicker from './colorPicker';
 
 const pulseAnimation = keyframes`
   0% {
@@ -40,11 +44,31 @@ const Item = styled.div`
 const ScoreBoard = () => {
   const { scores } = useSocketGameState();
   const color = useSocketPlayerColor();
+  const [displayColorDropdown, setDisplayColorDropdown] = useState(false);
+  const handleClickMyColor = () => {
+    setDisplayColorDropdown(!displayColorDropdown);
+  };
+  const handleExit = useCallback(() => {
+    setDisplayColorDropdown(false);
+  }, []);
+
   return (
     <Container>
       {map(scores, (val, key) => {
-        return <Item color={key} isMyColor={color === key}>{val}</Item>;
+        const isMyColor = color === key;
+        return (
+          <>
+            <Item
+              color={key}
+              isMyColor={isMyColor}
+              onClick={isMyColor ? handleClickMyColor : null}
+            >
+              {val}
+            </Item>
+          </>
+        );
       })}
+      {displayColorDropdown && <ColorPicker onSelect={handleExit} color={color} />}
     </Container>
   );
 }
