@@ -23,7 +23,6 @@ const GameTrigger = () => {
   const color = useSocketPlayerColor();
   const { activeColors, countdown, scores } = useSocketGameState();
   const didSomeoneWin = find(scores, (val, _key) => {
-    console.log(val);
     return val > 0;
   });
   if (size(activeColors) < 2) {
