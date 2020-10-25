@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import socketIOClient from 'socket.io-client';
 
-const socket = socketIOClient('https://bmtron.herokuapp.com');
+const socket = socketIOClient(process.env.NODE_ENV === 'development'
+  ? 'localhost:4001'
+  : 'https://bmtron.herokuapp.com');
 
 const useSocketGameState = () => {
   const [response, setResponse] = useState({});

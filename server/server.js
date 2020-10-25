@@ -92,7 +92,40 @@ let board = [...initialBoard];
 
 let gameInit;
 
-let gameStateInterval;
+const getGameStateAndEmit = () => {
+  const { gameIsActive, winner } = getGameStatus();
+  if (winner && winner !== 'DRAW' && gameInit) {
+    scores = {
+      ...scores,
+      [winner]: scores[winner] + 1,
+    };
+  }
+  if (!gameIsActive) {
+    gameInit = null;
+  }
+  const seconds = gameInit
+    ? Math.round(3 - (new Date().getTime() - gameInit.getTime()) / 1000)
+    : null;
+  if (seconds !== null && seconds <= 0) {
+    playerState = { ...playerState,
+      ..._.reduce(COLORS, (acc, color) => {
+        acc[color] = getNewPlayerState(board, playerState[color]);
+        return acc;
+      }, {}),
+    };
+  }
+  board = getBoard();
+  io.emit('GameState', {
+    board,
+    countdown: seconds >= 0 ? seconds : 0,
+    activeColors,
+    gameIsActive,
+    winner,
+    scores: getActiveScores(),
+  });
+};
+
+setInterval(getGameStateAndEmit, 50);
 
 const resetActiveColors = () => {
   const activeConnections = Object.keys(io.sockets.sockets);
@@ -117,7 +150,6 @@ io.on('connection', (socket) => {
   if (!colorObtained) {
     return;
   }
-  gameStateInterval = setInterval(() => getGameStateAndEmit(socket), 125);
   socket.on('disconnect', () => {
     resetActiveColors();
   });
@@ -269,40 +301,6 @@ const getActiveScores = () => {
   return _.pickBy(scores, (_value, key) => {
     return key in activeColors;
   });
-}
-
-const getGameStateAndEmit = socket => {
-  const { gameIsActive, winner } = getGameStatus();
-  if (winner && winner !== 'DRAW' && gameInit) {
-    scores = {
-      ...scores,
-      [winner]: scores[winner] + 1,
-    };
-  }
-  if (!gameIsActive) {
-    gameInit = null;
-  }
-  const seconds = gameInit
-    ? Math.round(3 - (new Date().getTime() - gameInit.getTime()) / 1000)
-    : null;
-  if (seconds !== null && seconds <= 0) {
-    playerState = { ...playerState,
-      ..._.reduce(COLORS, (acc, color) => {
-        acc[color] = getNewPlayerState(board, playerState[color]);
-        return acc;
-      }, {}),
-    };
-  }
-  board = getBoard();
-  socket.emit('GameState', {
-    board,
-    countdown: seconds >= 0 ? seconds : 0,
-    activeColors,
-    gameIsActive,
-    winner,
-    scores: getActiveScores(),
-  });
-  clearInterval(gameStateInterval);
 };
 
 server.listen(port, () => console.log(`Listening on port ${port}`));

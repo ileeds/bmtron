@@ -12,7 +12,9 @@ const RIGHT = 'r';
 const Grid = () => {
   const color = useSocketPlayerColor();
 
-  const handleKeydown = ({ key, repeat }) => {
+  const handleKeydown = (e) => {
+    const { key, repeat } = e;
+    e.preventDefault();
     if (repeat) {
       return;
     }
