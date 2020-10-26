@@ -24,7 +24,7 @@ const DOWN = 'd';
 const LEFT = 'l';
 const RIGHT = 'r';
 
-const ALL_COLORS = ['red', 'black', 'purple', 'green', 'pink', 'blue', 'yellow', 'orange'];
+const ALL_COLORS = ['red', 'black', 'purple', 'green', 'pink', 'blue', 'yellow', 'orange', 'brown'];
 const colorMap = {
   1: 'red',
   2: 'black',
