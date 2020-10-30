@@ -140,7 +140,6 @@ const getGameStateAndEmit = () => {
   io.emit('GameState', {
     board,
     countdown: seconds >= 0 ? seconds : 0,
-    activeColors,
     gameIsActive,
     winner,
     scores: getActiveScores(),
@@ -396,7 +395,7 @@ const getGameStatus = () => {
   } else {
     const alivePlayers = _.filter(Object.values(activeColors), color => playerState[color].alive);
     gameIsActive = _.size(alivePlayers) > 1;
-    winner = gameIsActive ? null : getWinner(alivePlayers);
+    winner = gameIsActive || _.size(activeColors) < 2 ? null : getWinner(alivePlayers);
   }
   return { gameIsActive, winner };
 };

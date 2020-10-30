@@ -36,10 +36,10 @@ const Button = styled.button`
 
 const GameTrigger = () => {
   const color = useSocketPlayerColor();
-  const { activeColors, countdown, scores, teams } = useSocketGameState();
+  const { countdown, scores, teams } = useSocketGameState();
   const [displayConfirm, setDisplayConfirm] = useState(false);
   const didSomeoneWin = find(scores, (val, _key) => val > 0);
-  if (size(activeColors) < 2) {
+  if (size(scores) < 2) {
     return null;
   }
   return (
