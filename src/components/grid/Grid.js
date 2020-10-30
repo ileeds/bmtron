@@ -3,6 +3,7 @@ import map from 'lodash/map';
 
 import Cell from './cell';
 import { emitKeyDown, useSocketGameState, useSocketPlayerColor } from '../../socket';
+import { isOnTeam } from '../../util';
 
 const UP = 'u';
 const DOWN = 'd';
@@ -10,7 +11,7 @@ const LEFT = 'l';
 const RIGHT = 'r';
 
 const Grid = () => {
-  const color = useSocketPlayerColor();
+  const myColor = useSocketPlayerColor();
 
   const handleKeydown = (e) => {
     const { key, metaKey, repeat } = e;
@@ -23,19 +24,19 @@ const Grid = () => {
     switch(key) {
       case 'ArrowUp':
       case 'w':
-        emitKeyDown(UP, color);
+        emitKeyDown(UP, myColor);
         break;
       case 'ArrowDown':
       case 's':
-        emitKeyDown(DOWN, color);
+        emitKeyDown(DOWN, myColor);
         break;
       case 'ArrowLeft':
       case 'a':
-        emitKeyDown(LEFT, color);
+        emitKeyDown(LEFT, myColor);
         break;
       case 'ArrowRight':
       case 'd':
-        emitKeyDown(RIGHT, color);
+        emitKeyDown(RIGHT, myColor);
         break;
       default:
     }
@@ -49,12 +50,12 @@ const Grid = () => {
     };
   });
 
-  const { board } = useSocketGameState();
+  const { board, teams } = useSocketGameState();
 
   return (
     map(board, (row, x) => (
       <div key={x}>{map(row, (color, y) => (
-        <Cell key={`${x}${y}`} color={color} />
+        <Cell key={`${x}${y}`} color={color} circle={isOnTeam(teams, myColor, color)} />
       ))}</div>
     ))
   );

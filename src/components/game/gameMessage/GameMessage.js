@@ -1,6 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import capitalize from 'lodash/capitalize';
+import join from 'lodash/join';
+import map from 'lodash/map';
 import { useSocketGameState, useSocketPlayerColor } from '../../../socket';
 
 const Container = styled.div`
@@ -18,7 +20,8 @@ const GameMessage = () => {
   if (winner === 'DRAW') {
     message = 'Draw';
   } else if (winner) {
-    message = `${capitalize(winner)} wins!`;
+    const name = join(map(winner, w => capitalize(w)), '-');
+    message = `${name} wins!`;
   } else if (countdown) {
     message = countdown;
   } else if (color) {

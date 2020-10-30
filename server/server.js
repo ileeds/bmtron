@@ -31,6 +31,7 @@ const colorMap = {
   3: 'purple',
   4: 'green'
 };
+let teamColorMap = {};
 
 const activeColors = {};
 
@@ -80,14 +81,14 @@ const getStartPositions = () => _.reduce(getInitialPlayerState(), (acc, val, key
   return acc;
 }, {});
 
-let playerState = { ...getInitialPlayerState() };
+let playerState = getInitialPlayerState();
 
-const initialScores = _.reduce(getInitialPlayerState(), (acc, _val, key) => {
+const getInitialScores = () => _.reduce(getInitialPlayerState(), (acc, _val, key) => {
   acc[key] = 0;
   return acc;
 }, {});
 
-let scores = { ...initialScores };
+let scores = getInitialScores();
 
 const getInitialBoard = () => _.times(COLUMN_COUNT, (x) => (_.times(ROW_COUNT, (y) => {
   const positionKey = getPositionKey(x, y);
@@ -107,10 +108,9 @@ let gameInit;
 const getGameStateAndEmit = () => {
   const { gameIsActive, winner } = getGameStatus();
   if (winner && winner !== 'DRAW' && gameInit) {
-    scores = {
-      ...scores,
-      [winner]: scores[winner] + 1,
-    };
+    _.forEach(winner, w => {
+      scores[w] = scores[w] + 1;
+    });
   }
   if (!gameIsActive) {
     gameInit = null;
@@ -144,6 +144,7 @@ const getGameStateAndEmit = () => {
     gameIsActive,
     winner,
     scores: getActiveScores(),
+    teams: teamColorMap,
   });
 };
 
@@ -155,7 +156,8 @@ const resetActiveColors = () => {
     if (!activeConnections.includes(connection)) {
       const oldColor = activeColors[connection];
       delete activeColors[connection];
-      playerState[oldColor] = { ...getInitialPlayerState()[oldColor] };
+      teamColorMap = {};
+      playerState[oldColor] = getInitialPlayerState()[oldColor];
     }
   });
 };
@@ -172,10 +174,10 @@ io.on('connection', (socket) => {
       return false;
     }
   });
+  emitAvailableColors();
   if (!colorObtained) {
     return;
   }
-  emitAvailableColors();
   socket.on('disconnect', () => {
     resetActiveColors();
     emitAvailableColors();
@@ -184,6 +186,7 @@ io.on('connection', (socket) => {
   socket.on('EndGame', handleEndGame);
   socket.on('KeyDown', handleKeyDown);
   socket.on('SelectColor', (color) => handleSelectColor(socket, color));
+  socket.on('SelectTeammate', (color) => handleSelectTeammate(socket, color));
   socket.on('GetAvailableColors', emitAvailableColors);
 });
 
@@ -191,38 +194,55 @@ const emitAvailableColors = () => {
   io.emit('AvailableColors', _.xor(Object.values(activeColors), ALL_COLORS));
 };
 
-const handleSelectColor = (socket, color) => {
-  const oldColor = activeColors[socket.id];
-  if (color === oldColor) {
+const handleSelectTeammate = (socket, color) => {
+  if (_.size(activeColors) < 4
+      || _.find(scores, (val, _key) => val > 0)) {
     return;
   }
-  const oldKey = _.findKey(colorMap, (val, _key) => {
-    return val === oldColor;
-  });
-  colorMap[oldKey] = color;
-  activeColors[socket.id] = color;
-  const oldPlayerState = playerState[oldColor];
-  playerState[color] = oldPlayerState;
-  delete playerState[oldColor];
-  const oldScore = scores[oldColor];
-  scores[color] = oldScore;
-  delete scores[oldColor];
-  io.to(socket.id).emit('PlayerColor', color);
+  const playerColor = activeColors[socket.id];
+  teamColorMap[1] = [playerColor, color];
+  teamColorMap[2] = _.without(Object.values(activeColors), ...teamColorMap[1]);
+};
+
+const handleSelectColor = (socket, color) => {
+  if (gameInit === null) {
+    const oldColor = activeColors[socket.id];
+    if (color === oldColor) {
+      return;
+    }
+    const oldKey = _.findKey(colorMap, (val, _key) => {
+      return val === oldColor;
+    });
+    colorMap[oldKey] = color;
+    activeColors[socket.id] = color;
+    const oldPlayerState = playerState[oldColor];
+    playerState[color] = oldPlayerState;
+    delete playerState[oldColor];
+    const oldScore = scores[oldColor];
+    scores[color] = oldScore;
+    delete scores[oldColor];
+    if (!_.isEmpty(teamColorMap)) {
+      teamColorMap[1] = _.map(teamColorMap[1], c => c === oldColor ? color : c);
+      teamColorMap[2] = _.map(teamColorMap[2], c => c === oldColor ? color : c);
+    }
+    io.to(socket.id).emit('PlayerColor', color);
+  }
 };
 
 const handleStartGame = () => {
   if (!_.size(activeColors) >= 2) {
     return;
   }
-  playerState = { ...getInitialPlayerState() };
+  playerState = getInitialPlayerState();
   board = getInitialBoard();
   gameInit = new Date();
 };
 
 const handleEndGame = () => {
-  playerState = { ...getInitialPlayerState() };
+  playerState = getInitialPlayerState();
   board = getInitialBoard();
-  scores = { ...initialScores };
+  scores = getInitialScores();
+  teamColorMap = {};
 };
 
 const handleKeyDown = ({ key, color }) => {
@@ -351,21 +371,33 @@ const getBoard = (gameIsActive) => {
   })));
 };
 
-const getAlivePlayer = () => {
-  const alivePlayer = _.find(Object.values(activeColors), color => {
-    return playerState[color].alive;
-  });
-  if (alivePlayer) {
-    return alivePlayer;
+const getWinner = (alivePlayers) => {
+  if (_.isEmpty(alivePlayers)) {
+    return 'DRAW';
   }
-  return 'DRAW';
+  return alivePlayers;
 };
 
 const getGameStatus = () => {
-  const gameIsActive = [..._.map(Object.values(activeColors), color => playerState[color].alive)].filter(Boolean).length > 1;
-  const winner = gameIsActive
-    ? null
-    : getAlivePlayer();
+  let gameIsActive;
+  let winner;
+  if (!_.isEmpty(teamColorMap)) {
+    const teamOneAlive = _.filter(Object.values(teamColorMap[1]), color => playerState[color].alive);
+    const teamTwoAlive = _.filter(Object.values(teamColorMap[2]), color => playerState[color].alive);
+    gameIsActive = !_.isEmpty(teamOneAlive) && !_.isEmpty(teamTwoAlive);
+    let winners;
+    if (!_.isEmpty(teamOneAlive)) {
+      winners = Object.values(teamColorMap[1]);
+    }
+    if (!_.isEmpty(teamTwoAlive)) {
+      winners = Object.values(teamColorMap[2]);
+    }
+    winner = gameIsActive ? null : getWinner(winners);
+  } else {
+    const alivePlayers = _.filter(Object.values(activeColors), color => playerState[color].alive);
+    gameIsActive = _.size(alivePlayers) > 1;
+    winner = gameIsActive ? null : getWinner(alivePlayers);
+  }
   return { gameIsActive, winner };
 };
 

@@ -9,9 +9,19 @@ const Square = styled.div`
   width: 0.5vw;
 `;
 
-const Cell = ({ color }) => {
+const Circle = styled.div`
+  display: flex;
+  background-color: ${({ color }) => color };
+  height: 0.5vw;
+  width: 0.5vw;
+  border-radius: 100%;
+`;
+
+const Cell = ({ color, circle }) => {
   return (
-    <Square color={color} />
+    <Square color={!circle && color} circle={circle}>
+      {circle && <Circle color={color} />}
+    </Square>
   );
 }
 

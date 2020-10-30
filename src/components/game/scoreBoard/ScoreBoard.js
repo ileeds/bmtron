@@ -1,11 +1,16 @@
 import React, { useCallback, useState } from 'react';
 import styled, { css, keyframes } from 'styled-components';
+import find from 'lodash/find';
+import isEmpty from 'lodash/isEmpty';
 import map from 'lodash/map';
+import size from 'lodash/size';
 import {
   useSocketGameState,
   useSocketPlayerColor,
 } from '../../../socket';
 import ColorPicker from './colorPicker';
+import TeamPicker from './teamPicker';
+import { isOnTeam } from '../../../util';
 
 const pulseAnimation = keyframes`
   0% {
@@ -19,7 +24,8 @@ const pulseAnimation = keyframes`
 	100% {
 		transform: scale(0.95);
 		box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-	}`;
+  }
+`;
 
 const Container = styled.div`
   width: 100%;
@@ -30,6 +36,7 @@ const Container = styled.div`
 `;
 
 const Item = styled.div`
+  ${({ circle }) => circle && 'border-radius: 100%' };
   background-color: ${({ color }) => color };
   color: white;
   width: 4vw;
@@ -42,14 +49,24 @@ const Item = styled.div`
 `;
 
 const ScoreBoard = () => {
-  const { scores } = useSocketGameState();
+  const { countdown, scores, teams } = useSocketGameState();
   const color = useSocketPlayerColor();
   const [displayColorDropdown, setDisplayColorDropdown] = useState(false);
+  const [teamPickerColor, setTeamPickerColor] = useState(false);
   const handleClickMyColor = () => {
-    setDisplayColorDropdown(!displayColorDropdown);
+    if (countdown === null) {
+      setDisplayColorDropdown(!displayColorDropdown);
+    }
+  };
+  const handleClickOtherColor = (key) => {
+    const didSomeoneWin = find(scores, (val, _key) => val > 0);
+    if (!didSomeoneWin && size(scores) >= 4 && isEmpty(teams)) {
+      setTeamPickerColor(teamPickerColor ? null : key);
+    }
   };
   const handleExit = useCallback(() => {
     setDisplayColorDropdown(false);
+    setTeamPickerColor(null);
   }, []);
 
   return (
@@ -59,15 +76,17 @@ const ScoreBoard = () => {
         return (
           <>
             <Item
+              circle={isOnTeam(teams, color, key)}
               color={key}
               isMyColor={isMyColor}
-              onClick={isMyColor ? handleClickMyColor : null}
+              onClick={isMyColor ? handleClickMyColor : () => handleClickOtherColor(key)}
             >
               {val}
             </Item>
           </>
         );
       })}
+      {teamPickerColor && <TeamPicker onSelect={handleExit} color={teamPickerColor} />}
       {displayColorDropdown && <ColorPicker onSelect={handleExit} color={color} />}
     </Container>
   );

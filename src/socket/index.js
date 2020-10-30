@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import socketIOClient from 'socket.io-client';
 
-const socket = socketIOClient(process.env.NODE_ENV === 'development'
-  ? 'localhost:4001'
-  : 'https://bmtron.herokuapp.com');
+const socket = socketIOClient(process.env.REACT_APP_DOMAIN || 'https://bmtron.herokuapp.com');
 
 const useSocketGameState = () => {
   const [response, setResponse] = useState({});
@@ -71,7 +69,11 @@ const emitGetAvailableColors = () => {
 
 const emitSelectColor = (color) => {
   socket.emit('SelectColor', color);
-}
+};
+
+const emitSelectTeammate = (color) => {
+  socket.emit('SelectTeammate', color);
+};
 
 export {
   useSocketGameState,
@@ -82,4 +84,5 @@ export {
   emitKeyDown,
   emitGetAvailableColors,
   emitSelectColor,
+  emitSelectTeammate,
 };
