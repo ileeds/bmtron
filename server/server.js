@@ -411,6 +411,9 @@ const getActiveScores = () => {
   });
 };
 
-server.listen(port, () => console.log(`Listening on port ${port}`));
+server.listen(port, () => {
+  console.log(`Listening on port ${port}`);
+  console.log(`TEST: ${process.env.PROJECT_PATH}`);
+});
 
 module.exports = app;
