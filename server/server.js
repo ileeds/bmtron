@@ -13,10 +13,6 @@ app.get('/*', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'build', 'index.html'));
 });
 
-app.get('/.well-known/acme-challenge/:content', function(req, res) {
-  res.send(process.env.SSL)
-})
-
 const server = http.createServer(app);
 const io = socketIo(server);
 
